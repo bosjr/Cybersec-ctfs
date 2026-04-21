@@ -1,0 +1,160 @@
+Voici la mise à jour complète de ton fichier markdown incluant la section supplémentaire demandée, structurée avec les objectifs, méthodes (sans réponses), et une conclusion finale :
+
+````markdown
+**Analyse de la machine WIN-015 - Investigation Mémoire (Volatility 3)**
+
+**Contexte :** La machine WIN-001 (CEO) a été compromise, l’attaquant a récupéré les identifiants de Cain Omoore, membre du groupe Domain IT Administrators. La machine de Cain (WIN-015) pourrait contenir les accès au système de contrôle de l'usine TryHatMe. Un dump mémoire de WIN-015 est fourni.
+
+Objectif : Identifier toute preuve de mouvement latéral, d'activité malveillante ou d'exfiltration de données sur la machine WIN-015.
+
+---
+
+### 1. Processus indiquant un mouvement latéral
+
+**Objectif :** Identifier un processus exécuté typique des techniques de mouvement latéral.
+
+**Méthode :**
+
+- Lister les processus exécutés :
+  ```bash
+  volatility3 -f dump.raw windows.pslist
+````
+
+* Chercher des processus connus pour le mouvement latéral (ex : `wmiprvse.exe`, `psexesvc.exe`, etc.)
+* Corroborer avec d’autres artefacts comme les connexions réseau ou commandes exécutées
+
+### 2. Technique MITRE
+
+**Objectif :** Associer le processus à une technique MITRE ATT\&CK.
+
+**Méthode :**
+
+* Identifier l’outil ou service utilisé (ex : WMI, PsExec)
+* Croiser avec la base MITRE : [https://attack.mitre.org](https://attack.mitre.org)
+* Exemple : WMI remoting correspond à T1021.006
+
+### 3. Autres processus liés au mouvement latéral
+
+**Objectif :** Identifier les outils secondaires exécutés dans le cadre de ce mouvement.
+
+**Méthode :**
+
+* Examiner les processus exécutés autour du même timestamp
+* Utiliser :
+
+  ```bash
+  volatility3 -f dump.raw windows.pslist
+  ```
+
+  et corréler avec des outils tiers (TeamsView\.exe, etc.)
+
+### 4. SID de l'utilisateur
+
+**Objectif :** Identifier le SID de l’utilisateur lié au processus suspect.
+
+**Méthode :**
+
+* Utiliser le plugin `windows.getsids` :
+
+  ```bash
+  volatility3 -f dump.raw windows.getsids
+  ```
+* Faire le lien entre le PID du processus et l'utilisateur associé
+
+### 5. Groupe de sécurité (Security Group)
+
+**Objectif :** Déterminer si l’utilisateur est membre d’un groupe à privilèges.
+
+**Méthode :**
+
+* Utiliser le plugin :
+
+  ```bash
+  volatility3 -f dump.raw windows.getsids
+  ```
+* Vérifier les groupes liés au compte (Domain Admins, Domain Users, etc.)
+
+### 6. Activité de discovery
+
+**Objectif :** Détecter si des commandes ont été exécutées pour récolter des infos sur le système
+
+**Méthode :**
+
+* Analyser les processus exécutés :
+
+  ```bash
+  volatility3 -f dump.raw windows.pslist
+  ```
+* Rechercher : `ipconfig.exe`, `systeminfo.exe`, `whoami.exe`, etc.
+* Confirmer les exécutions par l’utilisateur compromis
+
+### 7. Command & Control (C2)
+
+**Objectif :** Identifier une connexion sortante vers une adresse IP suspecte
+
+**Méthode :**
+
+* Utiliser :
+
+  ```bash
+  volatility3 -f dump.raw windows.netscan
+  ```
+* Rechercher des connexions sortantes vers une IP externe avec un port non standard (ex : 1995)
+* Corréler le PID avec un processus malveillant
+
+---
+
+### Détection d’élévation de privilèges via l’analyse mémoire
+
+**Objectif :** Rechercher des signes potentiels d’élévation de privilèges.
+
+**Méthode recommandée :**
+
+* Inspecter les processus liés aux services :
+
+  * Les adversaires abusent souvent de mauvaises configurations de services pour gagner des privilèges élevés.
+  * Une inspection attentive de la mémoire peut révéler ce type d’activité.
+* Analyser le niveau de privilèges des utilisateurs exécutant les processus :
+
+  * Identifier les utilisateurs liés à des processus suspects ou inhabituels.
+  * Cela permet de détecter des anomalies ou des signes d’abus de privilèges.
+
+---
+
+### Investigation plus poussée - Exemple de questions et méthode
+
+**Question 1 :** Identifier un autre processus suspect sur la machine.
+**Méthode :** Utiliser la liste des processus (`windows.pslist`) et rechercher les chemins complets des exécutables inhabituels (ex: `C:\Windows\Temp\pan.exe`).
+
+**Question 2 :** Quel compte a exécuté ce processus suspect ?
+**Méthode :** Lier le PID du processus avec l’utilisateur via `windows.getsids` ou `windows.sessions`.
+
+**Question 3 :** Quelle était la ligne de commande malveillante utilisée ?
+**Méthode :** Examiner la ligne de commande du processus via `windows.cmdline`.
+
+**Question 4 :** Quel outil de hacking bien connu correspond à cette commande ?
+**Méthode :** Analyser la ligne de commande pour identifier l’outil (ex : `privilege::debug sekurlsa::logonpasswords` → Mimikatz).
+
+**Question 5 :** Quelle technique MITRE ATT\&CK correspond à la méthode employée pour masquer ou échapper à la détection ?
+**Méthode :** Rechercher dans la base MITRE la technique d’évasion (ex : T1036 - Masquerading).
+
+---
+
+### Conclusion
+
+Following our investigation, we identified that the adversary successfully carried out lateral movement to WIN-015, escalated privileges, and extracted credentials. Additionally, as initially suspected, the threat actor likely exfiltrated access keys. However, confirming this will require a more in-depth forensic analysis of the affected host.
+
+The current state of the incident indicates that the compromise at TryHatMe is more severe than initially anticipated. The organisation faces considerable efforts ahead to fully understand the scope of the breach and implement the necessary remediation steps to restore standard operational capability.
+
+Here’s a quick recap of what you covered:
+
+* Detected lateral movement activity through memory artefacts.
+* Investigated malicious process execution and system discovery behaviour.
+* Uncovered privilege escalation and credential dumping indicators.
+
+---
+
+```
+
+
+```
